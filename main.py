@@ -8,7 +8,9 @@ import nltk
 
 nltk.download('punkt_tab')
 
+
 def read_json(file_name):
+    # Читает JSON файл и возвращает URL и имя выходного файла.
     if not os.path.exists(file_name):
         raise FileNotFoundError(f"Файл {file_name} не найден.")
     with open(file_name, 'r', encoding="utf8") as f_json:
@@ -22,19 +24,24 @@ def read_json(file_name):
             sys.exit(1)
         return f_json['url'], f_json['output']
 
+
 def save_json(file_name, sentences):
+    # Сохраняет список предложений в указанный JSON файл.
     with open(file_name, 'w', encoding='utf-8') as f:
         json.dump(sentences, f, ensure_ascii=False, indent=4)
 
+
 def preprocess_text(text):
+    # Предобрабатывает текст, удаляя лишние символы и форматируя его.
     text = re.sub(r'\r\n', '. ', text)
     text = re.sub(r'\t', '', text)
     text = re.sub(r'\.\.', r'.', text)
     return text
 
-def main():
-    try:
 
+def main():
+    # Основная функция, выполняющая процесс извлечения текста с веб-страницы.
+    try:
         settings_file = 'settings.json'
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
