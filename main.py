@@ -33,10 +33,49 @@ def save_json(file_name, sentences):
 
 def preprocess_text(text):
     # Предобрабатывает текст, удаляя лишние символы и форматируя его.
-    text = re.sub(r'\r\n', '. ', text)
-    text = re.sub(r'\t', '', text)
-    text = re.sub(r'\.\.', r'.', text)
-    return text
+    text = re.sub(r'[\r\t]+|(\n)', '. ', text)
+    text = re.sub(r'\.\. ', '. ', text)
+    text = re.sub(r'\. \. ', '. ', text)
+    nltk_text = nltk.sent_tokenize(text, language='russian')
+    return [s for s in nltk_text if len(s) != 1]
+
+
+def find_exercise(tocs, main_text):
+    forbidden_words = [
+        "часть",
+        "содержание",
+        "оглавление",
+        "введение",
+        "заключение",
+        "предисловие",
+        "аннотация",
+        "резюме",
+        "глава",
+        "параграф",
+        "приложение",
+        "источник",
+        "список литературы",
+        "библиография"
+    ]
+    len_str_main_text = len(main_text)
+    clear_line = lambda s: re.sub(r'[^а-яА-ЯёЁa-zA-Z\s]', '', s).strip()
+    for toc in tocs:
+        toc = clear_line(toc)
+        if len(toc) > 1 and toc.lower() not in forbidden_words:
+            for idx, line in enumerate(main_text):
+                if idx > len_str_main_text * 0.5:
+                    continue
+                if toc in clear_line(line):
+                    print(toc)
+                    return main_text[idx:]
+
+
+def divide_toc_text(dirty_text, soup):
+    cleaned_text = preprocess_text(dirty_text)
+    for idx, sentense in enumerate(cleaned_text):
+        if 'Распознанный текст (распознано автоматически без проверок)' in sentense:
+            return cleaned_text[:idx], cleaned_text[idx + 1:]
+    return cleaned_text, preprocess_text(soup.find(name='div', class_="rasp_txt").text)
 
 
 def main():
@@ -52,9 +91,9 @@ def main():
             request = requests.get(url, headers=headers)
             if request.status_code == 200:
                 soup = BeautifulSoup(request.content, 'html.parser')
-                text = soup.find(name='div', class_="rasp_txt").text
-                text = preprocess_text(text)
-                text = nltk.sent_tokenize(text, language='russian')
+                dirty_text = soup.find(name='p', class_="MsoPlainText").text
+                toc, main_text = divide_toc_text(dirty_text, soup)
+                text = find_exercise(toc, main_text)
                 save_json(out_file, text)
             else:
                 print(f"Ошибка при запросе {request.status_code}")

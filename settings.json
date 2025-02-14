@@ -4,13 +4,15 @@
     "http://my-uchebnik.ru/book/russian/5/russian-00000103.htm",
     "http://my-uchebnik.ru/book/russian/5/russian-00000009.htm",
     "http://my-uchebnik.ru/book/russian/5/russian-00000072.htm",
-    "http://my-uchebnik.ru/book/russian/5/russian-00000145.htm"
+    "http://my-uchebnik.ru/book/russian/5/russian-00000145.htm",
+    "http://my-uchebnik.ru/book/russian/5/russian-00000104.htm"
   ],
   "output": [
     "rus_1.json",
     "rus_5.json",
     "rus_11.json",
     "rus_6.json",
-    "rus_3.json"
+    "rus_3.json",
+    "rus_5_3.json"
   ]
 }
