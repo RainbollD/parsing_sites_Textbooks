@@ -98,6 +98,7 @@ def main():
             else:
                 print(f"Ошибка при запросе {request.status_code}")
                 sys.exit(1)
+
     except FileNotFoundError as e:
         print(e)
     except ValueError as e:
