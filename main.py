@@ -5,6 +5,7 @@ import os
 import json
 import re
 import nltk
+from numpy.ma.core import count
 
 nltk.download('punkt_tab')
 
@@ -33,15 +34,16 @@ def save_json(file_name, sentences):
 
 def preprocess_text(text):
     # Предобрабатывает текст, удаляя лишние символы и форматируя его.
-    text = re.sub(r'[\r\t]+|(\n)', '. ', text)
+    text = re.sub(r'\r', '', text)
+    text = re.sub(r'\n', '. ', text)
+    text = re.sub(r'\t', '', text)
     text = re.sub(r'\.\. ', '. ', text)
     text = re.sub(r'\. \. ', '. ', text)
     nltk_text = nltk.sent_tokenize(text, language='russian')
     return [s for s in nltk_text if len(s) != 1]
 
-
-def find_exercise(tocs, main_text):
-    forbidden_words = [
+def del_beginning(tocs, main_text):
+    forbidden_words_beg = [
         "часть",
         "содержание",
         "оглавление",
@@ -61,13 +63,35 @@ def find_exercise(tocs, main_text):
     clear_line = lambda s: re.sub(r'[^а-яА-ЯёЁa-zA-Z\s]', '', s).strip()
     for toc in tocs:
         toc = clear_line(toc)
-        if len(toc) > 1 and toc.lower() not in forbidden_words:
+        if len(toc) > 1 and toc.lower() not in forbidden_words_beg:
             for idx, line in enumerate(main_text):
                 if idx > len_str_main_text * 0.5:
                     continue
                 if toc in clear_line(line):
-                    print(toc)
                     return main_text[idx:]
+
+def del_ending(text):
+    forbidden_words_end = [
+        "оглавление",
+        "содержание"
+    ]
+    len_str_main_text = len(text)
+    clear_line = lambda s: re.sub(r'[^а-яА-ЯёЁa-zA-Z\s]', '', s).strip()
+    main_text = text
+    for idx, line in enumerate(text[::-1]):
+        if idx > len_str_main_text * 0.5:
+            return main_text
+        for word in forbidden_words_end:
+            check_line = clear_line(line).lower().strip()
+            if word.upper() in line or (word in check_line and len(word) == len(check_line)):
+                main_text =  text[:-idx-1]
+    return main_text
+
+
+def find_exercise(tocs, main_text):
+    main_text = del_beginning(tocs, main_text)
+    main_text = del_ending(main_text)
+    return main_text
 
 
 def divide_toc_text(dirty_text, soup):
