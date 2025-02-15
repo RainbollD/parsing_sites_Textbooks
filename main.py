@@ -5,7 +5,6 @@ import os
 import json
 import re
 import nltk
-from numpy.ma.core import count
 
 nltk.download('punkt_tab')
 
