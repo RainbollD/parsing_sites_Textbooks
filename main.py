@@ -41,6 +41,7 @@ def preprocess_text(text):
     nltk_text = nltk.sent_tokenize(text, language='russian')
     return [s for s in nltk_text if len(s) != 1]
 
+
 def del_beginning(tocs, main_text):
     forbidden_words_beg = [
         "часть",
@@ -56,18 +57,23 @@ def del_beginning(tocs, main_text):
         "приложение",
         "источник",
         "список литературы",
-        "библиография"
+        "библиография",
+        "повторение"
     ]
+    key_symbols = ["§"]
     len_str_main_text = len(main_text)
     clear_line = lambda s: re.sub(r'[^а-яА-ЯёЁa-zA-Z\s]', '', s).strip()
     for toc in tocs:
         toc = clear_line(toc)
         if len(toc) > 1 and toc.lower() not in forbidden_words_beg:
             for idx, line in enumerate(main_text):
+                for special in key_symbols:
+                    if special in line: return main_text[idx:]
                 if idx > len_str_main_text * 0.5:
                     continue
                 if toc in clear_line(line):
                     return main_text[idx:]
+
 
 def del_ending(text):
     forbidden_words_end = [
@@ -83,7 +89,7 @@ def del_ending(text):
         for word in forbidden_words_end:
             check_line = clear_line(line).lower().strip()
             if word.upper() in line or (word in check_line and len(word) == len(check_line)):
-                main_text =  text[:-idx-1]
+                main_text = text[:-idx - 1]
     return main_text
 
 
@@ -101,6 +107,8 @@ def divide_toc_text(dirty_text, soup):
     return cleaned_text, preprocess_text(soup.find(name='div', class_="rasp_txt").text)
 
 
+
+
 def main():
     # Основная функция, выполняющая процесс извлечения текста с веб-страницы.
     try:
@@ -110,13 +118,20 @@ def main():
         }
 
         urls, out_files = read_json(settings_file)
+        if not isinstance(urls, list):
+            urls = [urls]
+        if not isinstance(out_files, list):
+            out_files = [out_files]
         for url, out_file in zip(urls, out_files):
+            text = [""]
             request = requests.get(url, headers=headers)
             if request.status_code == 200:
                 soup = BeautifulSoup(request.content, 'html.parser')
-                dirty_text = soup.find(name='p', class_="MsoPlainText").text
-                toc, main_text = divide_toc_text(dirty_text, soup)
-                text = find_exercise(toc, main_text)
+                dirty_text = soup.find(name='p', class_="MsoPlainText")
+                if dirty_text is not None:
+                    dirty_text = dirty_text.text
+                    toc, main_text = divide_toc_text(dirty_text, soup)
+                    text = find_exercise(toc, main_text)
                 save_json(out_file, text)
             else:
                 print(f"Ошибка при запросе {request.status_code}")
