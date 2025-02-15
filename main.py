@@ -78,7 +78,8 @@ def del_beginning(tocs, main_text):
 def del_ending(text):
     forbidden_words_end = [
         "оглавление",
-        "содержание"
+        "содержание",
+        "aвторы"
     ]
     len_str_main_text = len(text)
     clear_line = lambda s: re.sub(r'[^а-яА-ЯёЁa-zA-Z\s]', '', s).strip()
@@ -105,8 +106,6 @@ def divide_toc_text(dirty_text, soup):
         if 'Распознанный текст (распознано автоматически без проверок)' in sentense:
             return cleaned_text[:idx], cleaned_text[idx + 1:]
     return cleaned_text, preprocess_text(soup.find(name='div', class_="rasp_txt").text)
-
-
 
 
 def main():
