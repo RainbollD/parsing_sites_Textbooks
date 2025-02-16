@@ -122,7 +122,6 @@ def main():
         if not isinstance(out_files, list):
             out_files = [out_files]
         for url, out_file in zip(urls, out_files):
-            text = [""]
             request = requests.get(url, headers=headers)
             if request.status_code == 200:
                 soup = BeautifulSoup(request.content, 'html.parser')
@@ -131,6 +130,8 @@ def main():
                     dirty_text = dirty_text.text
                     toc, main_text = divide_toc_text(dirty_text, soup)
                     text = find_exercise(toc, main_text)
+                else:
+                    text = preprocess_text(soup.text)
                 save_json(out_file, text)
             else:
                 print(f"Ошибка при запросе {request.status_code}")
