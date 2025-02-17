@@ -5,6 +5,8 @@ import os
 import json
 import re
 import nltk
+import pdfplumber
+
 from constants import FILE_SETTINGS, HEADERS, FORBIDDEN_SYMBOLS_BEG, FORBIDDEN_SYMBOLS_END, KEY_SYMBOLS
 
 
@@ -120,7 +122,6 @@ class MainLoop:
 
     @staticmethod
     def divide_and_find_exercise(dirty_text, soup):
-        dirty_text = dirty_text.text
         toc, main_text = WorkData.divide_toc_text(dirty_text, soup)
         return WorkData.find_exercise(toc, main_text)
 
@@ -140,7 +141,7 @@ class MainLoop:
                 soup = BeautifulSoup(request.content, 'html.parser')
                 dirty_text = soup.find(name='p', class_="MsoPlainText")
                 if dirty_text is not None:
-                    text = MainLoop.divide_and_find_exercise(dirty_text, soup)
+                    text = MainLoop.divide_and_find_exercise(dirty_text.text, soup)
                 else:
                     text = WorkData.transform_text(soup.text)
                 WorkData.save_json(out_file, text)
@@ -154,5 +155,51 @@ class MainLoop:
             print("Успешно!")
 
 
+class TestPDF:
+
+    @staticmethod
+    def download_pdf(url, output_path):
+        response = requests.get(url)
+        if response.status_code == 200:
+            with open(output_path, 'wb') as f:
+                f.write(response.content)
+            print(f"PDF успешно загружен и сохранен как {output_path}")
+        else:
+            print(f"Ошибка при загрузке PDF: {response.status_code}")
+
+    @staticmethod
+    def extract_text_with_pdfplumber(pdf_path):
+        text = ""
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                text += page.extract_text()
+        return text
+
+    @staticmethod
+    def clean_text(text):
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+
+    @staticmethod
+    def find_exercise(text):
+        for idx, sentense in enumerate(text):
+            for key in KEY_SYMBOLS:
+                if key in sentense:
+                    return text[idx+1:]
+
+    @staticmethod
+    def main():
+        # pdf_url = "https://test-edu.tatar.ru/upload/storage/org6297/files/russkij-jazyk-s_-g_-barhudarov-i-dr_.pdf"
+        pdf_path = "sample.pdf"
+        # TestPDF.download_pdf(pdf_url, pdf_path)
+
+        text = TestPDF.extract_text_with_pdfplumber(pdf_path)
+
+        cleaned_text = TestPDF.clean_text(text)
+        divide_text = WorkData.transform_text(cleaned_text)
+        end_text = TestPDF.find_exercise(divide_text)
+        WorkData.save_json("pdf_read.json", end_text)
+
+
 if __name__ == "__main__":
-    MainLoop.preparation_data()
+    TestPDF.main()
