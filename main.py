@@ -189,9 +189,9 @@ class TestPDF:
 
     @staticmethod
     def main():
-        # pdf_url = "https://test-edu.tatar.ru/upload/storage/org6297/files/russkij-jazyk-s_-g_-barhudarov-i-dr_.pdf"
+        pdf_url = "https://test-edu.tatar.ru/upload/storage/org6297/files/russkij-jazyk-s_-g_-barhudarov-i-dr_.pdf"
         pdf_path = "sample.pdf"
-        # TestPDF.download_pdf(pdf_url, pdf_path)
+        TestPDF.download_pdf(pdf_url, pdf_path)
 
         text = TestPDF.extract_text_with_pdfplumber(pdf_path)
 
