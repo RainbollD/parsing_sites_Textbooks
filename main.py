@@ -5,25 +5,7 @@ import os
 import json
 import re
 import nltk
-
-nltk.download('punkt')
-
-FORBIDDEN_SYMBOLS_BEG = [
-    "часть", "содержание", "оглавление", "введение", "заключение",
-    "предисловие", "аннотация", "резюме", "глава", "параграф",
-    "приложение", "источник", "список литературы", "библиография", "повторение"
-]
-
-KEY_SYMBOLS = ["§"]
-
-FORBIDDEN_SYMBOLS_END = [
-    "оглавление", "содержание", "aвторы"
-]
-
-FILE_SETTINGS = 'settings.json'
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-}
+from constants import FILE_SETTINGS, HEADERS, FORBIDDEN_SYMBOLS_BEG, FORBIDDEN_SYMBOLS_END, KEY_SYMBOLS
 
 
 class WorkData:
@@ -128,25 +110,42 @@ class GetData:
 
 
 class MainLoop:
+
     @staticmethod
-    def main():
+    def ensure_nltk_resource(resource_name):
         try:
+            nltk.data.find(f'tokenizers/{resource_name}')
+        except LookupError:
+            nltk.download(resource_name)
+
+    @staticmethod
+    def divide_and_find_exercise(dirty_text, soup):
+        dirty_text = dirty_text.text
+        toc, main_text = WorkData.divide_toc_text(dirty_text, soup)
+        return WorkData.find_exercise(toc, main_text)
+
+    @staticmethod
+    def is_request(request):
+        if not request.status_code == 200:
+            raise requests.ConnectionError("Status code {}".format(request.status_code))
+
+    @staticmethod
+    def preparation_data():
+        try:
+            MainLoop.ensure_nltk_resource('punkt')
             urls, outfiles = WorkData.get_urls_out_files()
             for url, out_file in zip(urls, outfiles):
                 request = requests.get(url, headers=HEADERS)
-                if request.status_code == 200:
-                    soup = BeautifulSoup(request.content, 'html.parser')
-                    dirty_text = soup.find(name='p', class_="MsoPlainText")
-                    if dirty_text is not None:
-                        dirty_text = dirty_text.text
-                        toc, main_text = WorkData.divide_toc_text(dirty_text, soup)
-                        text = WorkData.find_exercise(toc, main_text)
-                    else:
-                        text = WorkData.transform_text(soup.text)
-                    WorkData.save_json(out_file, text)
+                MainLoop.is_request(request)
+                soup = BeautifulSoup(request.content, 'html.parser')
+                dirty_text = soup.find(name='p', class_="MsoPlainText")
+                if dirty_text is not None:
+                    text = MainLoop.divide_and_find_exercise(dirty_text, soup)
                 else:
-                    print(f"Ошибка при запросе {request.status_code}")
-                    sys.exit(1)
+                    text = WorkData.transform_text(soup.text)
+                WorkData.save_json(out_file, text)
+        except ConnectionError as e:
+            print(e)
         except FileNotFoundError as e:
             print(e)
         except ValueError as e:
@@ -156,4 +155,4 @@ class MainLoop:
 
 
 if __name__ == "__main__":
-    MainLoop.main()
+    MainLoop.preparation_data()
