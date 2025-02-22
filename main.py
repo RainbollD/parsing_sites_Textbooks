@@ -1,205 +1,130 @@
 import sys
+import time
+from os import times
+
 import requests
-from bs4 import BeautifulSoup
 import os
 import json
 import re
 import nltk
 import pdfplumber
 
-from constants import FILE_SETTINGS, HEADERS, FORBIDDEN_SYMBOLS_BEG, FORBIDDEN_SYMBOLS_END, KEY_SYMBOLS
+from constants import FILE_SETTINGS, KEY_SYMBOLS_BEG, KEY_SYMBOLS_END, DEFAULT_NAME_PDF
 
 
-class WorkData:
-    @staticmethod
-    def transform_text(text):
-        text = re.sub(r'[\r\t]', '', text)
-        text = re.sub(r'\n', '. ', text)
-        text = re.sub(r'\.{2,}', '.', text)
-        text = re.sub(r'\. \. ', '. ', text)
-        nltk_text = nltk.sent_tokenize(text, language='russian')
-        return [s for s in nltk_text if len(s) > 1]
+class GetSettings:
+    def __init__(self):
+        self.file_data = {}
 
     @staticmethod
-    def clear_line(line):
-        return re.sub(r'[^а-яА-ЯёЁa-zA-Z\s]', '', line).strip()
+    def is_file():
+        if not os.path.exists(FILE_SETTINGS):
+            raise FileNotFoundError(f"Файл {FILE_SETTINGS} не найден.")
 
-    @staticmethod
-    def del_beginning(tocs, main_text):
-        len_str_main_text = len(main_text)
-        for toc in tocs:
-            toc = WorkData.clear_line(toc)
-            if len(toc) > 1 and toc.lower() not in FORBIDDEN_SYMBOLS_BEG:
-                for idx, line in enumerate(main_text):
-                    if any(special in line for special in KEY_SYMBOLS):
-                        return main_text[idx:]
-                    if idx > len_str_main_text * 0.5:
-                        continue
-                    if toc in WorkData.clear_line(line):
-                        return main_text[idx:]
-        return main_text
-
-    @staticmethod
-    def del_ending(text):
-        len_str_main_text = len(text)
-        main_text = ''
-        for idx, line in enumerate(text[::-1]):
-            if idx > len_str_main_text * 0.5 and main_text == '':
-                return text
-            for word in FORBIDDEN_SYMBOLS_END:
-                check_line = WorkData().clear_line(line).lower()
-                if word.upper() in line or (word in check_line and len(word) == len(check_line)):
-                    main_text = text[:-idx - 1]
-        return main_text
-
-    @staticmethod
-    def find_exercise(tocs, main_text):
-        main_text = WorkData.del_beginning(tocs, main_text)
-        main_text = WorkData.del_ending(main_text)
-        return main_text
-
-    @staticmethod
-    def divide_toc_text(dirty_text, soup):
-        cleaned_text = WorkData.transform_text(dirty_text)
-        for idx, sentence in enumerate(cleaned_text):
-            if 'Распознанный текст (распознано автоматически без проверок)' in sentence:
-                return cleaned_text[:idx], cleaned_text[idx + 1:]
-        return cleaned_text, WorkData.transform_text(soup.find(name='div', class_="rasp_txt").text)
-
-    @staticmethod
-    def get_urls_out_files():
-        file_data = GetData.read_json()
-        return file_data[0], file_data[1]
-
-    @staticmethod
-    def save_json(file_name, sentences):
-        with open(file_name, 'w', encoding='utf-8') as f:
-            json.dump(sentences, f, ensure_ascii=False, indent=4)
-
-
-class GetData:
-    @staticmethod
-    def is_file(file_settings):
-        if not os.path.exists(file_settings):
-            raise FileNotFoundError(f"Файл {file_settings} не найден.")
-
-    @staticmethod
-    def is_dict(file_data):
-        if not isinstance(file_data, dict):
+    def is_dict(self):
+        if not isinstance(self.file_data, dict):
             raise ValueError("Неверный формат данных в файле.")
 
-    @staticmethod
-    def is_url(file_data):
-        if 'url' not in file_data:
+    def is_url(self):
+        if 'url' not in self.file_data:
             print("В файле отсутствует url (ссылка на сайт)")
             sys.exit(1)
 
-    @staticmethod
-    def is_output(file_data):
-        if 'output' not in file_data:
+    def is_output(self):
+        if 'output' not in self.file_data:
             print("В файле отсутствует output (имя файла для вывода)")
             sys.exit(1)
 
-    @staticmethod
-    def read_json():
-        GetData.is_file(FILE_SETTINGS)
+    def read_json(self):
+        self.is_file()
         with open(FILE_SETTINGS, 'r', encoding="utf8") as data:
-            file_data = json.load(data)
-            GetData.is_dict(file_data)
-            GetData.is_url(file_data)
-            GetData.is_output(file_data)
-            return file_data['url'], file_data['output']
+            self.file_data = json.load(data)
+            self.is_dict()
+            self.is_url()
+            self.is_output()
+
+    def get_urls_out_files(self):
+        self.read_json()
+        return self.file_data['url'], self.file_data['output']
 
 
-class MainLoop:
+class PDF:
+    def del_beg(self):
+        idx_del = 0
+        for idx, sentense in enumerate(self.text):
+            if idx > len(self.text) * 0.05:
+                self.text = self.text[idx_del + 1:]
+                return
+            for key in KEY_SYMBOLS_BEG:
+                if key in sentense:
+                    idx_del = idx
 
-    @staticmethod
-    def ensure_nltk_resource(resource_name):
-        try:
-            nltk.data.find(f'tokenizers/{resource_name}')
-        except LookupError:
-            nltk.download(resource_name)
+    def del_end(self):
+        idx_del = 0
+        for idx, sentense in enumerate(self.text[::-1]):
+            if idx > len(self.text) * 0.2:
+                self.text = self.text[:-idx_del - 1]
+                return
+            for key in KEY_SYMBOLS_END:
+                if key in sentense or key.upper() in sentense:
+                    idx_del = idx
 
-    @staticmethod
-    def divide_and_find_exercise(dirty_text, soup):
-        toc, main_text = WorkData.divide_toc_text(dirty_text, soup)
-        return WorkData.find_exercise(toc, main_text)
+    def find_exercise(self):
+        self.del_beg()
+        self.del_end()
+
+    def transform_text(self):
+        self.text = re.sub(r'begin.*?\n', ' ', self.text)
+        self.text = re.sub(r'\(cid:\d{1,3}\)\n', '', self.text)
+        self.text = re.sub(r'\(cid:\d{1,3}\)', '-', self.text)
+        self.text = re.sub(r'\"\n', '', self.text)
+        self.text = re.sub(r'\"', '-', self.text)
+        self.text = re.sub(r'\n', ' ', self.text)
+        self.text = re.sub(r'  ', ' ', self.text)
+        self.text = re.sub(r'- ', '', self.text)
+        self.text = nltk.sent_tokenize(self.text, language='russian')
+
+    def main(self):
+        self.transform_text()
+        self.find_exercise()
+
+
+class DownloadPdf(GetSettings, PDF):
+    def __init__(self):
+        super().__init__()
+        self.text = ''
+        self.url = ''
+        self.outfile = ''
 
     @staticmethod
     def is_request(request):
         if not request.status_code == 200:
             raise requests.ConnectionError("Status code {}".format(request.status_code))
 
-    @staticmethod
-    def preparation_data():
-        try:
-            MainLoop.ensure_nltk_resource('punkt')
-            urls, outfiles = WorkData.get_urls_out_files()
-            for url, out_file in zip(urls, outfiles):
-                request = requests.get(url, headers=HEADERS)
-                MainLoop.is_request(request)
-                soup = BeautifulSoup(request.content, 'html.parser')
-                dirty_text = soup.find(name='p', class_="MsoPlainText")
-                if dirty_text is not None:
-                    text = MainLoop.divide_and_find_exercise(dirty_text.text, soup)
-                else:
-                    text = WorkData.transform_text(soup.text)
-                WorkData.save_json(out_file, text)
-        except ConnectionError as e:
-            print(e)
-        except FileNotFoundError as e:
-            print(e)
-        except ValueError as e:
-            print(e)
-        else:
-            print("Успешно!")
+    def download_pdf(self):
+        response = requests.get(self.url)
+        self.is_request(response)
+        with open(DEFAULT_NAME_PDF, 'wb') as f:
+            f.write(response.content)
 
-
-class TestPDF:
-
-    @staticmethod
-    def download_pdf(url, output_path):
-        response = requests.get(url)
-        if response.status_code == 200:
-            with open(output_path, 'wb') as f:
-                f.write(response.content)
-            print(f"PDF успешно загружен и сохранен как {output_path}")
-        else:
-            print(f"Ошибка при загрузке PDF: {response.status_code}")
-
-    @staticmethod
-    def extract_text_with_pdfplumber(pdf_path):
-        text = ""
-        with pdfplumber.open(pdf_path) as pdf:
+    def extract_text_with_pdfplumber(self):
+        self.text = ''
+        with pdfplumber.open(DEFAULT_NAME_PDF) as pdf:
             for page in pdf.pages:
-                text += page.extract_text()
-        return text
+                self.text += 'begin' + page.extract_text()
 
-    @staticmethod
-    def clean_text(text):
-        text = re.sub(r'\s+', ' ', text).strip()
-        return text
+    def save_json(self):
+        with open(self.outfile, 'w', encoding='utf-8') as f:
+            json.dump(self.text, f, ensure_ascii=False, indent=4)
 
-    @staticmethod
-    def find_exercise(text):
-        for idx, sentense in enumerate(text):
-            for key in KEY_SYMBOLS:
-                if key in sentense:
-                    return text[idx+1:]
-
-    @staticmethod
-    def main():
-        pdf_url = "https://test-edu.tatar.ru/upload/storage/org6297/files/russkij-jazyk-s_-g_-barhudarov-i-dr_.pdf"
-        pdf_path = "sample.pdf"
-        TestPDF.download_pdf(pdf_url, pdf_path)
-
-        text = TestPDF.extract_text_with_pdfplumber(pdf_path)
-
-        cleaned_text = TestPDF.clean_text(text)
-        divide_text = WorkData.transform_text(cleaned_text)
-        end_text = TestPDF.find_exercise(divide_text)
-        WorkData.save_json("pdf_read.json", end_text)
+    def download(self):
+        urls, outfiles = self.get_urls_out_files()
+        for self.url, self.outfile in zip(urls, outfiles):
+            self.download_pdf()
+            self.extract_text_with_pdfplumber()
+            self.main()
+            self.save_json()
 
 
 if __name__ == "__main__":
-    TestPDF.main()
+    DownloadPdf().download()
