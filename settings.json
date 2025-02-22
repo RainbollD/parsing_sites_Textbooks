@@ -1,10 +1,10 @@
 {
   "url": [
-    "http://my-uchebnik.ru/book/russian/5/russian-00000155.htm",
-    "http://my-uchebnik.ru/book/russian/5/russian-00000103.htm"
+    "https://media.caspian.agency/school_836/partitions/documents/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9%20%D1%8F%D0%B7%D1%8B%D0%BA%205%20%D0%BA%D0%BB%D0%B0%D1%81%D1%81%201%20%D1%87%D0%B0%D1%81%D1%82%D1%8C.pdf",
+    "https://school4nmsk.narod.ru/ANEW325/5_klass.pdf"
   ],
   "output": [
-    "rus_1.json",
-    "rus_5.json"
+    "Русский_язык_5_класс_Т.А.Ладыженская,М.Т.Баранов,Л.А.Тростенцова_2019.json",
+    "Русский_язык_5_класс_О.М.Александрова,О.В.Загоровская,С.И.Богданов,Л.А.Вербицкая,Ю.Н.Гостева,И.Н.Добротина,А.Г.Нарушевич,Е.И.Казакова,И.П.Васильевых_2018.json"
   ]
 }
