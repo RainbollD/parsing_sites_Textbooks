@@ -1,6 +1,5 @@
 import sys
-import time
-from os import times
+from errno import ELOOP
 
 import requests
 import os
@@ -49,15 +48,12 @@ class GetSettings:
 
 
 class PDF:
-    def del_beg(self):
-        idx_del = 0
+    def del_beggining(self):
         for idx, sentense in enumerate(self.text):
-            if idx > len(self.text) * 0.05:
-                self.text = self.text[idx_del + 1:]
-                return
             for key in KEY_SYMBOLS_BEG:
                 if key in sentense:
-                    idx_del = idx
+                    self.text = self.text[idx + 1:]
+                    return
 
     def del_end(self):
         idx_del = 0
@@ -69,9 +65,9 @@ class PDF:
                 if key in sentense or key.upper() in sentense:
                     idx_del = idx
 
-    def find_exercise(self):
-        self.del_beg()
-        self.del_end()
+    def find_exercise(self, is_del_end):
+        self.del_beggining()
+        if is_del_end: self.del_end()
 
     def transform_text(self):
         self.text = re.sub(r'begin.*?\n', ' ', self.text)
@@ -84,9 +80,9 @@ class PDF:
         self.text = re.sub(r'- ', '', self.text)
         self.text = nltk.sent_tokenize(self.text, language='russian')
 
-    def main(self):
+    def main(self, is_del_end):
         self.transform_text()
-        self.find_exercise()
+        self.find_exercise(is_del_end)
 
 
 class DownloadPdf(GetSettings, PDF):
@@ -95,11 +91,25 @@ class DownloadPdf(GetSettings, PDF):
         self.text = ''
         self.url = ''
         self.outfile = ''
+        self.name_pdf = ''
 
     @staticmethod
     def is_request(request):
         if not request.status_code == 200:
             raise requests.ConnectionError("Status code {}".format(request.status_code))
+
+    @staticmethod
+    def is_special_page(page):
+        for key in KEY_SYMBOLS_END:
+            for sententce in page.split('\n')[:2]:
+                if sententce == key or key.upper() == sententce:
+                    print(sententce, page.split('\n'))
+                    return True
+        return False
+
+    def is_url_or_file(self):
+        regex = re.compile(r'^(?:http|ftp)s?://', re.IGNORECASE)
+        return re.match(regex, self.url) is not None
 
     def download_pdf(self):
         response = requests.get(self.url)
@@ -109,9 +119,17 @@ class DownloadPdf(GetSettings, PDF):
 
     def extract_text_with_pdfplumber(self):
         self.text = ''
-        with pdfplumber.open(DEFAULT_NAME_PDF) as pdf:
+        idx = 0
+        with pdfplumber.open(self.name_pdf) as pdf:
+            len_pdf_pages = len(pdf.pages)
             for page in pdf.pages:
-                self.text += 'begin' + page.extract_text()
+                idx += 1
+                if not self.is_special_page(page.extract_text()):
+                    self.text += 'begin' + page.extract_text()
+                else:
+                    if idx > 0.75 * len_pdf_pages:
+                        return False
+        return True
 
     def save_json(self):
         with open(self.outfile, 'w', encoding='utf-8') as f:
@@ -120,9 +138,13 @@ class DownloadPdf(GetSettings, PDF):
     def download(self):
         urls, outfiles = self.get_urls_out_files()
         for self.url, self.outfile in zip(urls, outfiles):
-            self.download_pdf()
-            self.extract_text_with_pdfplumber()
-            self.main()
+            if self.is_url_or_file():
+                self.download_pdf()
+                self.name_pdf = DEFAULT_NAME_PDF
+            else:
+                self.name_pdf = self.url
+            is_del_end = self.extract_text_with_pdfplumber()
+            self.main(is_del_end)
             self.save_json()
 
 
