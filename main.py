@@ -1,6 +1,3 @@
-import sys
-from errno import ELOOP
-
 import requests
 import os
 import json
@@ -24,49 +21,35 @@ class GetSettings:
         if not isinstance(self.file_data, dict):
             raise ValueError("Неверный формат данных в файле.")
 
-    def is_url(self):
-        if 'url' not in self.file_data:
-            print("В файле отсутствует url (ссылка на сайт)")
-            sys.exit(1)
-
-    def is_output(self):
-        if 'output' not in self.file_data:
-            print("В файле отсутствует output (имя файла для вывода)")
-            sys.exit(1)
-
     def read_json(self):
         self.is_file()
         with open(FILE_SETTINGS, 'r', encoding="utf8") as data:
             self.file_data = json.load(data)
             self.is_dict()
-            self.is_url()
-            self.is_output()
-
-    def get_urls_out_files(self):
-        self.read_json()
-        return self.file_data['url'], self.file_data['output']
+            self.file_data = self.file_data['books']
 
 
 class PDF:
-    def del_beggining(self):
-        for idx, sentense in enumerate(self.text):
+
+    def del_begin(self):
+        for idx, line in enumerate(self.text):
             for key in KEY_SYMBOLS_BEG:
-                if key in sentense:
+                if key in line:
                     self.text = self.text[idx + 1:]
                     return
 
     def del_end(self):
         idx_del = 0
-        for idx, sentense in enumerate(self.text[::-1]):
+        for idx, line in enumerate(self.text[::-1]):
             if idx > len(self.text) * 0.2:
                 self.text = self.text[:-idx_del - 1]
                 return
             for key in KEY_SYMBOLS_END:
-                if key in sentense or key.upper() in sentense:
+                if key in line or key.upper() in line:
                     idx_del = idx
 
     def find_exercise(self, is_del_end):
-        self.del_beggining()
+        self.del_begin()
         if is_del_end: self.del_end()
 
     def transform_text(self):
@@ -76,13 +59,14 @@ class PDF:
         self.text = re.sub(r'\"\n', '', self.text)
         self.text = re.sub(r'\"', '-', self.text)
         self.text = re.sub(r'\n', ' ', self.text)
-        self.text = re.sub(r'  ', ' ', self.text)
+        self.text = re.sub(r' {2}', ' ', self.text)
         self.text = re.sub(r'- ', '', self.text)
         self.text = nltk.sent_tokenize(self.text, language='russian')
 
-    def main(self, is_del_end):
+    def main(self, is_del_end, do_find_exersice):
         self.transform_text()
-        self.find_exercise(is_del_end)
+        print(4, is_del_end, do_find_exersice)
+        if do_find_exersice: self.find_exercise(is_del_end)
 
 
 class DownloadPdf(GetSettings, PDF):
@@ -90,20 +74,20 @@ class DownloadPdf(GetSettings, PDF):
         super().__init__()
         self.text = ''
         self.url = ''
-        self.outfile = ''
+        self.title = ''
         self.name_pdf = ''
+        self.remove_pages = []
 
-    @staticmethod
-    def is_request(request):
+
+    def is_request(self, request):
         if not request.status_code == 200:
-            raise requests.ConnectionError("Status code {}".format(request.status_code))
+            raise requests.ConnectionError("Status code {}, url: {}".format(request.status_code, self.url))
 
     @staticmethod
     def is_special_page(page):
         for key in KEY_SYMBOLS_END:
-            for sententce in page.split('\n')[:2]:
-                if sententce == key or key.upper() == sententce:
-                    print(sententce, page.split('\n'))
+            for line in page.split('\n')[:2]:
+                if line == key or key.upper() == line:
                     return True
         return False
 
@@ -111,40 +95,62 @@ class DownloadPdf(GetSettings, PDF):
         regex = re.compile(r'^(?:http|ftp)s?://', re.IGNORECASE)
         return re.match(regex, self.url) is not None
 
+    def assign_value_to_variable(self, book):
+        self.title = book['title']
+        self.url = book['url']
+        self.remove_pages = book['remove_pages']
+
     def download_pdf(self):
+        print(self.url)
+        print('8-')
         response = requests.get(self.url)
+        print(8)
         self.is_request(response)
-        with open(DEFAULT_NAME_PDF, 'wb') as f:
+        print(9)
+        with open(self.name_pdf, 'wb') as f:
+            print(10)
             f.write(response.content)
 
     def extract_text_with_pdfplumber(self):
+        print(1)
         self.text = ''
-        idx = 0
+        idx = 1
         with pdfplumber.open(self.name_pdf) as pdf:
             len_pdf_pages = len(pdf.pages)
             for page in pdf.pages:
                 idx += 1
-                if not self.is_special_page(page.extract_text()):
-                    self.text += 'begin' + page.extract_text()
-                else:
-                    if idx > 0.75 * len_pdf_pages:
-                        return False
+                if idx not in self.remove_pages:
+                    if not self.is_special_page(page.extract_text()):
+                        self.text += 'begin' + page.extract_text()
+                    else:
+                        if idx > 0.75 * len_pdf_pages:
+                            return False
         return True
 
     def save_json(self):
-        with open(self.outfile, 'w', encoding='utf-8') as f:
+        with open(self.title, 'w', encoding='utf-8') as f:
             json.dump(self.text, f, ensure_ascii=False, indent=4)
 
     def download(self):
-        urls, outfiles = self.get_urls_out_files()
-        for self.url, self.outfile in zip(urls, outfiles):
+        self.read_json()
+        for book in self.file_data:
+            print(-2)
+            self.assign_value_to_variable(book)
+            print(-3)
             if self.is_url_or_file():
-                self.download_pdf()
+                print(4)
                 self.name_pdf = DEFAULT_NAME_PDF
+                print(5)
+                self.download_pdf()
+                print(6)
             else:
                 self.name_pdf = self.url
+                print(7)
             is_del_end = self.extract_text_with_pdfplumber()
-            self.main(is_del_end)
+            print(2)
+            do_find_exersice = True if self.remove_pages == [] else False
+            print(3)
+            self.main(is_del_end, do_find_exersice)
             self.save_json()
 
 
