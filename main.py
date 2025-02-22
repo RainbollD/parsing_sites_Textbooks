@@ -1,3 +1,6 @@
+import time
+from os import times
+
 import requests
 import os
 import json
@@ -65,7 +68,6 @@ class PDF:
 
     def main(self, is_del_end, do_find_exersice):
         self.transform_text()
-        print(4, is_del_end, do_find_exersice)
         if do_find_exersice: self.find_exercise(is_del_end)
 
 
@@ -77,7 +79,6 @@ class DownloadPdf(GetSettings, PDF):
         self.title = ''
         self.name_pdf = ''
         self.remove_pages = []
-
 
     def is_request(self, request):
         if not request.status_code == 200:
@@ -101,31 +102,39 @@ class DownloadPdf(GetSettings, PDF):
         self.remove_pages = book['remove_pages']
 
     def download_pdf(self):
-        print(self.url)
-        print('8-')
         response = requests.get(self.url)
-        print(8)
         self.is_request(response)
-        print(9)
         with open(self.name_pdf, 'wb') as f:
-            print(10)
             f.write(response.content)
 
-    def extract_text_with_pdfplumber(self):
-        print(1)
+    def remove_pages_from_settings(self):
         self.text = ''
-        idx = 1
+        idx = 0
+        with pdfplumber.open(self.name_pdf) as pdf:
+            for page in pdf.pages:
+                if idx not in self.remove_pages:
+                    self.text += 'begin' + page.extract_text()
+                idx += 1
+        return True
+
+    def remove_special(self):
+        self.text = ''
+        idx = 0
         with pdfplumber.open(self.name_pdf) as pdf:
             len_pdf_pages = len(pdf.pages)
             for page in pdf.pages:
                 idx += 1
-                if idx not in self.remove_pages:
-                    if not self.is_special_page(page.extract_text()):
-                        self.text += 'begin' + page.extract_text()
-                    else:
-                        if idx > 0.75 * len_pdf_pages:
-                            return False
+                if not self.is_special_page(page.extract_text()):
+                    self.text += 'begin' + page.extract_text()
+                else:
+                    if idx > 0.75 * len_pdf_pages:
+                        return False
         return True
+
+    def extract_text_with_pdfplumber(self):
+        if len(self.remove_pages) != 0:
+            return self.remove_pages_from_settings()
+        return self.remove_special()
 
     def save_json(self):
         with open(self.title, 'w', encoding='utf-8') as f:
@@ -134,22 +143,14 @@ class DownloadPdf(GetSettings, PDF):
     def download(self):
         self.read_json()
         for book in self.file_data:
-            print(-2)
             self.assign_value_to_variable(book)
-            print(-3)
             if self.is_url_or_file():
-                print(4)
                 self.name_pdf = DEFAULT_NAME_PDF
-                print(5)
                 self.download_pdf()
-                print(6)
             else:
                 self.name_pdf = self.url
-                print(7)
             is_del_end = self.extract_text_with_pdfplumber()
-            print(2)
             do_find_exersice = True if self.remove_pages == [] else False
-            print(3)
             self.main(is_del_end, do_find_exersice)
             self.save_json()
 
