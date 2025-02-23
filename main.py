@@ -138,13 +138,12 @@ class BasicControl(GetSettings, TransformData):
         return True
 
     def up_down_contents(self, pdf):
+        self.up_down = 'up'
         for page in pdf[10:20]:
             string = page.extract_text().split('\n')[0]
             if not bool(re.search(r'\d', string)):
                 self.up_down = 'down'
-                print(self.url, 'down')
                 return
-        print(self.url, 'up')
 
     def extract_text_with_pdfplumber(self):
         with pdfplumber.open(self.name_file) as pdf:
@@ -170,9 +169,10 @@ class BasicControl(GetSettings, TransformData):
         self.read_json()
         for book in self.file_data:
             self.download(book)
-            is_del_end = self.extract_text_with_pdfplumber()
-            self.control_transform(is_del_end, self.remove_pages == [])
-            self.save_json()
+            if self.title == 'Русский_язык_5_класс_Т.А.Ладыженская_М.Т.Баранов_Л.А.Тростенцова_2019.json':
+                is_del_end = self.extract_text_with_pdfplumber()
+                self.control_transform(is_del_end, self.remove_pages == [])
+                self.save_json()
 
 
 if __name__ == "__main__":
