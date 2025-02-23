@@ -32,7 +32,7 @@ class GetSettings:
             self.file_data = self.file_data['books']
 
 
-class PDF:
+class TransformData:
 
     def del_begin(self):
         for idx, line in enumerate(self.text):
@@ -57,6 +57,7 @@ class PDF:
 
     def transform_text(self):
         self.text = re.sub(r'begin.*?\n', ' ', self.text)
+        self.text = re.sub(r'.*?end', '', self.text)
         self.text = re.sub(r'\(cid:\d{1,3}\)\n', '', self.text)
         self.text = re.sub(r'\(cid:\d{1,3}\)', '-', self.text)
         self.text = re.sub(r'\"\n', '', self.text)
@@ -66,19 +67,20 @@ class PDF:
         self.text = re.sub(r'- ', '', self.text)
         self.text = nltk.sent_tokenize(self.text, language='russian')
 
-    def main(self, is_del_end, do_find_exersice):
+    def control_transform(self, is_del_end, find_exersice):
         self.transform_text()
-        if do_find_exersice: self.find_exercise(is_del_end)
+        if find_exersice: self.find_exercise(is_del_end)
 
 
-class DownloadPdf(GetSettings, PDF):
+class BasicControl(GetSettings, TransformData):
     def __init__(self):
         super().__init__()
         self.text = ''
         self.url = ''
         self.title = ''
-        self.name_pdf = ''
+        self.name_file = ''
         self.remove_pages = []
+        self.up_down = 'up'
 
     def is_request(self, request):
         if not request.status_code == 200:
@@ -101,59 +103,77 @@ class DownloadPdf(GetSettings, PDF):
         self.url = book['url']
         self.remove_pages = book['remove_pages']
 
-    def download_pdf(self):
+    def download_file_from_url(self):
         response = requests.get(self.url)
         self.is_request(response)
-        with open(self.name_pdf, 'wb') as f:
+        with open(self.name_file, 'wb') as f:
             f.write(response.content)
 
-    def remove_pages_from_settings(self):
+    def add_begin_end(self, page):
+        if self.up_down == 'up':
+            self.text += 'begin' + page
+        else:
+            self.text += page + 'end'
+
+    def remove_pages_from_settings(self, pdf):
         self.text = ''
         idx = 0
-        with pdfplumber.open(self.name_pdf) as pdf:
-            for page in pdf.pages:
-                if idx not in self.remove_pages:
-                    self.text += 'begin' + page.extract_text()
-                idx += 1
+        for page in pdf:
+            if idx not in self.remove_pages:
+                self.add_begin_end(page.extract_text())
+            idx += 1
         return True
 
-    def remove_special(self):
+    def remove_special(self, pdf):
         self.text = ''
         idx = 0
-        with pdfplumber.open(self.name_pdf) as pdf:
-            len_pdf_pages = len(pdf.pages)
-            for page in pdf.pages:
-                idx += 1
-                if not self.is_special_page(page.extract_text()):
-                    self.text += 'begin' + page.extract_text()
-                else:
-                    if idx > 0.75 * len_pdf_pages:
-                        return False
+        len_pdf_pages = len(pdf)
+        for page in pdf:
+            idx += 1
+            if not self.is_special_page(page.extract_text()):
+                self.add_begin_end(page.extract_text())
+            else:
+                if idx > 0.75 * len_pdf_pages:
+                    return False
         return True
+
+    def up_down_contents(self, pdf):
+        for page in pdf[10:20]:
+            string = page.extract_text().split('\n')[0]
+            if not bool(re.search(r'\d', string)):
+                self.up_down = 'down'
+                print(self.url, 'down')
+                return
+        print(self.url, 'up')
 
     def extract_text_with_pdfplumber(self):
-        if len(self.remove_pages) != 0:
-            return self.remove_pages_from_settings()
-        return self.remove_special()
+        with pdfplumber.open(self.name_file) as pdf:
+            pdf = pdf.pages
+            self.up_down_contents(pdf)
+            if len(self.remove_pages) != 0:
+                return self.remove_pages_from_settings(pdf)
+            return self.remove_special(pdf)
 
     def save_json(self):
         with open(self.title, 'w', encoding='utf-8') as f:
             json.dump(self.text, f, ensure_ascii=False, indent=4)
 
-    def download(self):
+    def download(self, book):
+        self.assign_value_to_variable(book)
+        if self.is_url_or_file():
+            self.name_file = DEFAULT_NAME_PDF
+            self.download_file_from_url()
+        else:
+            self.name_file = self.url
+
+    def main(self):
         self.read_json()
         for book in self.file_data:
-            self.assign_value_to_variable(book)
-            if self.is_url_or_file():
-                self.name_pdf = DEFAULT_NAME_PDF
-                self.download_pdf()
-            else:
-                self.name_pdf = self.url
+            self.download(book)
             is_del_end = self.extract_text_with_pdfplumber()
-            do_find_exersice = True if self.remove_pages == [] else False
-            self.main(is_del_end, do_find_exersice)
+            self.control_transform(is_del_end, self.remove_pages == [])
             self.save_json()
 
 
 if __name__ == "__main__":
-    DownloadPdf().download()
+    BasicControl().main()
