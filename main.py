@@ -1,6 +1,3 @@
-import time
-from os import times
-
 import requests
 import os
 import json
@@ -169,10 +166,9 @@ class BasicControl(GetSettings, TransformData):
         self.read_json()
         for book in self.file_data:
             self.download(book)
-            if self.title == 'Русский_язык_5_класс_Т.А.Ладыженская_М.Т.Баранов_Л.А.Тростенцова_2019.json':
-                is_del_end = self.extract_text_with_pdfplumber()
-                self.control_transform(is_del_end, self.remove_pages == [])
-                self.save_json()
+            is_del_end = self.extract_text_with_pdfplumber()
+            self.control_transform(is_del_end, self.remove_pages == [])
+            self.save_json()
 
 
 if __name__ == "__main__":
