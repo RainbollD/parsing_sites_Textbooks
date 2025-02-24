@@ -5,7 +5,7 @@ import re
 import nltk
 import pdfplumber
 
-from constants import FILE_SETTINGS, KEY_SYMBOLS_BEG, KEY_SYMBOLS_END, DEFAULT_NAME_PDF
+from constants import FILE_SETTINGS, KEY_SYMBOLS_BEG, KEY_SYMBOLS_END, DEFAULT_NAME_PDF, FOLDER_TESTS
 
 
 class GetSettings:
@@ -218,7 +218,7 @@ class BasicControl(GetSettings, TransformData):
         :return:
         """
         self.up_down = 'up'
-        for page in pdf[10:20]:
+        for page in pdf[10:15]:
             string = page.extract_text().split('\n')[0]
             if not bool(re.search(r'\d', string)):
                 self.up_down = 'down'
@@ -239,12 +239,18 @@ class BasicControl(GetSettings, TransformData):
                 return self.remove_pages_from_settings(pdf)
             return self.remove_special(pdf)
 
+    @staticmethod
+    def create_folder_test():
+        if not os.path.exists(FOLDER_TESTS):
+            os.makedirs(FOLDER_TESTS)
+
     def save_json(self):
         """
         Сохранение книги в test_files
         :return:
         """
-        with open('test_file/' + self.title, 'w', encoding='utf-8') as f:
+        self.create_folder_test()
+        with open(os.path.join(FOLDER_TESTS, self.title), 'w', encoding='utf-8') as f:
             json.dump(self.text, f, ensure_ascii=False, indent=4)
 
     def download(self, book):
