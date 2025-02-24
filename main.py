@@ -4,9 +4,10 @@ import json
 import re
 import nltk
 import pdfplumber
+import progressbar
 
 from constants import (FILE_SETTINGS, KEY_SYMBOLS_BEG, KEY_SYMBOLS_END,
-                       DEFAULT_NAME_PDF, FOLDER_TESTS, FOLDER_PDF)
+                       DEFAULT_NAME_PDF, FOLDER_TESTS, FOLDER_PDF, NTLK_DATA_DIRECTORY)
 
 
 class GetSettings:
@@ -45,10 +46,9 @@ class TransformData:
         :return:
         """
         for idx, line in enumerate(self.text):
-            for key in KEY_SYMBOLS_BEG:
-                if key in line:
-                    self.text = self.text[idx + 1:]
-                    return
+            if any(key in line for key in KEY_SYMBOLS_BEG):
+                self.text = self.text[idx + 1:]
+                return
 
     def del_end(self):
         """
@@ -63,9 +63,8 @@ class TransformData:
             if idx > len(self.text) * 0.2:
                 self.text = self.text[:-idx_del - 1]
                 return
-            for key in KEY_SYMBOLS_END:
-                if key in line or key.upper() in line:
-                    idx_del = idx
+            if any(key in line for key in KEY_SYMBOLS_END):
+                idx_del = idx
 
     def find_exercise(self, is_del_end):
         """
@@ -112,6 +111,8 @@ class BasicControl(GetSettings, TransformData):
         self.name_file = ''
         self.remove_pages = []
         self.up_down = 'up'
+        self.widgets = [progressbar.Percentage(),
+                        progressbar.Bar('█', ' [', ']')]
 
     def is_request(self, request):
         """
@@ -130,11 +131,7 @@ class BasicControl(GetSettings, TransformData):
         :param page: Страница, полученная из pdf
         :return:
         """
-        for key in KEY_SYMBOLS_END:
-            for line in page.split('\n')[:2]:
-                if line == key or key.upper() == line:
-                    return True
-        return False
+        return any(key == line or key.upper() == line for key in KEY_SYMBOLS_END for line in page.split('\n')[:2])
 
     def is_url_or_file(self):
         """
@@ -143,18 +140,6 @@ class BasicControl(GetSettings, TransformData):
         """
         regex = re.compile(r'^(?:http|ftp)s?://', re.IGNORECASE)
         return re.match(regex, self.url) is not None
-
-    def assign_value_to_variable(self, book):
-        """
-        Присваивание: self.title - название книги,
-                      self.url - ссылка на сайт или файл
-                      self.remove_pages - странцы, которые нужно удалить
-        :param book: Данные книги
-        :return:
-        """
-        self.title = book['title']
-        self.url = book['url']
-        self.remove_pages = book['remove_pages']
 
     def download_file_from_url(self):
         """
@@ -185,11 +170,9 @@ class BasicControl(GetSettings, TransformData):
         :return:
         """
         self.text = ''
-        idx = 0
-        for page in pdf:
-            if idx not in self.remove_pages:
+        for num, page in enumerate(pdf):
+            if num not in self.remove_pages:
                 self.add_begin_end(page.extract_text())
-            idx += 1
         return True
 
     def remove_special(self, pdf):
@@ -201,14 +184,11 @@ class BasicControl(GetSettings, TransformData):
                  False: После 75% текста, если находит особую странцу
         """
         self.text = ''
-        idx = 0
         len_pdf_pages = len(pdf)
-        for page in pdf:
-            idx += 1
+        for num, page in enumerate(pdf):
             if not self.is_special_page(page.extract_text()):
                 self.add_begin_end(page.extract_text())
-            else:
-                if idx > 0.75 * len_pdf_pages:
+            elif num > 0.75 * len_pdf_pages:
                     return False
         return True
 
@@ -221,7 +201,7 @@ class BasicControl(GetSettings, TransformData):
         self.up_down = 'up'
         for page in pdf[10:15]:
             string = page.extract_text().split('\n')[0]
-            if not bool(re.search(r'\d', string)):
+            if not re.search(r'\d', string):
                 self.up_down = 'down'
                 return
 
@@ -254,6 +234,18 @@ class BasicControl(GetSettings, TransformData):
         with open(os.path.join(FOLDER_TESTS, self.title), 'w', encoding='utf-8') as f:
             json.dump(self.text, f, ensure_ascii=False, indent=4)
 
+    def assign_value_to_variable(self, book):
+        """
+        Присваивание: self.title - название книги,
+                      self.url - ссылка на сайт или файл
+                      self.remove_pages - странцы, которые нужно удалить
+        :param book: Данные книги
+        :return:
+        """
+        self.title = book['title']
+        self.url = book['url']
+        self.remove_pages = book['remove_pages']
+
     def download(self, book):
         """
         Присваивает данные
@@ -268,18 +260,39 @@ class BasicControl(GetSettings, TransformData):
         else:
             self.name_file = self.url
 
+    def setting_bar(self):
+        return progressbar.ProgressBar(widgets=self.widgets, max_value=len(self.file_data),
+                                       prefix='Прогресс: ',
+                                       fill_char='█')
+
     def main(self):
         """
         Метод, контролирующий классы.
         :return:
         """
         self.read_json()
-        for book in self.file_data:
+        bar = self.setting_bar()
+        bar.update(0)
+        for i, book in enumerate(self.file_data):
             self.download(book)
             is_del_end = self.extract_text_with_pdfplumber()
             self.control_transform(is_del_end, self.remove_pages == [])
             self.save_json()
+            bar.update(i+1)
+
+
+def auto_nltk_tab():
+    nltk.data.path.append(NTLK_DATA_DIRECTORY)
+
+    if not os.path.exists(NTLK_DATA_DIRECTORY):
+        os.makedirs(NTLK_DATA_DIRECTORY)
+
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt', download_dir=NTLK_DATA_DIRECTORY)
 
 
 if __name__ == "__main__":
+    auto_nltk_tab()
     BasicControl().main()
