@@ -5,7 +5,8 @@ import re
 import nltk
 import pdfplumber
 
-from constants import FILE_SETTINGS, KEY_SYMBOLS_BEG, KEY_SYMBOLS_END, DEFAULT_NAME_PDF, FOLDER_TESTS
+from constants import (FILE_SETTINGS, KEY_SYMBOLS_BEG, KEY_SYMBOLS_END,
+                       DEFAULT_NAME_PDF, FOLDER_TESTS, FOLDER_PDF)
 
 
 class GetSettings:
@@ -162,7 +163,7 @@ class BasicControl(GetSettings, TransformData):
         """
         response = requests.get(self.url)
         self.is_request(response)
-        with open(self.name_file, 'wb') as f:
+        with open(os.path.join(FOLDER_PDF, self.name_file), 'wb') as f:
             f.write(response.content)
 
     def add_begin_end(self, page):
@@ -232,7 +233,7 @@ class BasicControl(GetSettings, TransformData):
         :return: Нужно ли удалять конец True: Да
                                         False: Нет
         """
-        with pdfplumber.open(self.name_file) as pdf:
+        with pdfplumber.open(os.path.join(FOLDER_PDF, self.name_file)) as pdf:
             pdf = pdf.pages
             self.up_down_contents(pdf)
             if len(self.remove_pages) != 0:

@@ -9,3 +9,5 @@ FILE_SETTINGS = 'settings.json'
 DEFAULT_NAME_PDF = 'download_work_parsing.pdf'
 
 FOLDER_TESTS = 'test_files'
+
+FOLDER_PDF = 'pdf_files'
