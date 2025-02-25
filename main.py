@@ -39,42 +39,6 @@ class GetSettings:
 
 class TransformData:
 
-    def del_begin(self):
-        """
-        Поиск момента с которого начинаются упражнения,
-        путем поиска наличия особого символа в строке "KEY_SYMBOLS_BEG"
-        :return:
-        """
-        for idx, line in enumerate(self.text):
-            if any(key in line for key in KEY_SYMBOLS_BEG):
-                self.text = self.text[idx + 1:]
-                return
-
-    def del_end(self):
-        """
-        Поиск момента с которого упражнения заканчиваются,
-        путем поиска наличия особого символа в строке "KEY_SYMBOLS_BEG"
-        и сохранения индекса этой строки.
-        Выход из функции, когда будет просмотрено 20% текста
-        :return:
-        """
-        idx_del = 0
-        for idx, line in enumerate(self.text[::-1]):
-            if idx > len(self.text) * 0.2:
-                self.text = self.text[:-idx_del - 1]
-                return
-            if any(key in line for key in KEY_SYMBOLS_END):
-                idx_del = idx
-
-    def find_exercise(self, is_del_end):
-        """
-        Организация поИсика упражнений.
-        :param is_del_end: Нужно ли удалять конец
-        :return:
-        """
-        self.del_begin()
-        if is_del_end: self.del_end()
-
     def transform_text(self):
         """
         Преобразование сырых данных из pdf
@@ -91,16 +55,6 @@ class TransformData:
         self.text = re.sub(r'- ', '', self.text)
         self.text = re.sub(r'­ ', '', self.text)
         self.text = nltk.sent_tokenize(self.text, language='russian')
-
-    def control_transform(self, is_del_end, find_exersice):
-        """
-        Вызов трансформации текста и поиска упражнений
-        :param is_del_end: Нужно ли удалять конец
-        :param find_exersice: Нужно ли искать упражнения
-        :return:
-        """
-        self.transform_text()
-        if find_exersice: self.find_exercise(is_del_end)
 
 
 class BasicControl(GetSettings, TransformData):
@@ -176,24 +130,29 @@ class BasicControl(GetSettings, TransformData):
         for num, page in enumerate(pdf):
             if num not in self.remove_pages:
                 self.add_begin_end(page.extract_text())
-        return True
+            self.remove_pages.pop(0)
+            if len(self.remove_pages) == 0:
+                return
 
     def remove_special(self, pdf):
         """
         Перебирает страницы книги для выявления особых страниц (не содержащих страниц).
         Не сохраняет данные особой страницы.
         :param pdf: Pdf книга
-        :return: True: Не найдено осоых страниц после 75%
+        :return: True: Не найдено особых страниц после 75%
                  False: После 75% текста, если находит особую странцу
         """
         self.text = ''
         len_pdf_pages = len(pdf)
         for num, page in enumerate(pdf):
-            if not self.is_special_page(page.extract_text()):
+            if len_pdf_pages * 0.3 <= num <= len_pdf_pages*0.7:
                 self.add_begin_end(page.extract_text())
-            elif num > 0.75 * len_pdf_pages:
-                    return False
-        return True
+            else:
+                if not self.is_special_page(page.extract_text()):
+                    self.add_begin_end(page.extract_text())
+                elif num > len_pdf_pages*0.7:
+                    return
+
 
     def up_down_contents(self, pdf):
         """
@@ -217,11 +176,11 @@ class BasicControl(GetSettings, TransformData):
                                         False: Нет
         """
         with pdfplumber.open(os.path.join(FOLDER_PDF, self.name_file)) as pdf:
-            pdf = pdf.pages
+            pdf = pdf.pages[2:]
             self.up_down_contents(pdf)
             if len(self.remove_pages) != 0:
-                return self.remove_pages_from_settings(pdf)
-            return self.remove_special(pdf)
+                self.remove_pages_from_settings(pdf)
+            self.remove_special(pdf)
 
     @staticmethod
     def create_folder_test():
@@ -278,10 +237,10 @@ class BasicControl(GetSettings, TransformData):
         bar.update(0)
         for i, book in enumerate(self.file_data):
             self.title = book['title']
-            if not os.path.exists(os.path.join(FOLDER_TESTS, self.title)):
+            if True or not os.path.exists(os.path.join(FOLDER_TESTS, self.title)):
                 self.download(book)
-                is_del_end = self.extract_text_with_pdfplumber()
-                self.control_transform(is_del_end, self.remove_pages == [])
+                self.extract_text_with_pdfplumber()
+                self.transform_text()
                 self.save_json()
             bar.update(i+1)
 

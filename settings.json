@@ -8,15 +8,15 @@
     {
       "title": "Русский_язык_9_класс_О.М.Александрова_О.В.Загоровская_С._И._Богданов_2018.json",
       "url": "http://edu.mari.ru/mouo-novotoryal/sh6/DocLib24/%D0%A3%D1%87%D0%B5%D0%B1%D0%BD%D0%B8%D0%BA%D0%B8%20%D0%BF%D0%BE%20%D1%80%D0%BE%D0%B4%D0%BD%D0%BE%D0%BC%D1%83%20%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%BE%D0%BC%D1%83%20%D1%8F%D0%B7%D1%8B%D0%BA%D1%83/%D0%A0%D0%BE%D0%B4%D0%BD%D0%BE%D0%B9%20%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9%20%D1%8F%D0%B7%D1%8B%D0%BA%20-%209%20%D0%BA%D0%BB%D0%B0%D1%81%D1%81.pdf",
-      "remove_pages": [1,2,3,4,5,6,7]
+      "remove_pages": []
     },
     {
-      "title": "Русский_язык_11_класс_базовый_уровень_учебникТ.М.Воителева_2014.json",
+      "title": "Русский_язык_11_класс_базовый_уровень_учебник_Т.М.Воителева_2014.json",
       "url": "https://academia-moscow.ru/off-line/_books/fragment/101117254/101117254f.pdf",
       "remove_pages": []
     },
     {
-      "title": "Русский_язык_5_класс_О.М.Александрова,О.В.Загоровская,С.И.Богданов_2018.json",
+      "title": "Русский_язык_5_класс_О.М.Александрова_О.В.Загоровская,С.И.Богданов_2018.json",
       "url": "https://school4nmsk.narod.ru/ANEW325/5_klass.pdf",
       "remove_pages": []
     },
@@ -48,6 +48,26 @@
     {
       "title": "Русский_язык_6_класс_Л.А.Мурина_Т.В.Игнатович_Ж.Ф.Жадейко_2020.json",
       "url": "https://adukar.com/images/photo/rus_yaz_6kl_murina_rus_bel_2020.pdf",
+      "remove_pages": []
+    },
+    {
+      "title": "Русский_язык_7_класс_Л.А.Мурина_Т.В.Игнатович_Ж.Ф.Жадейко_2018.json",
+      "url": "https://adu.by/images/2021/10/rus_yaz_8kl_Murina_rus_bel_2018.pdf",
+      "remove_pages": []
+    },
+    {
+      "title": "Русский_язык_9_класс_Л.А.Мурина_Ф.М.Литвинко_Е.Е.Долбик_Н.М.Пипченко_2019.json",
+      "url": "https://adukar.com/images/photo/rus_yaz_Murina_9kl_rus_bel_2019.pdf",
+      "remove_pages": []
+    },
+    {
+      "title": "Русский_язык_10_класс_В.Л.Леонович_В.А.Саникович_В.А.Саникович_М.И.Малецкая_2020.json",
+      "url": "https://adukar.com/images/photo/rus_yaz_10kl_leonovich_rus_bel_2020.pdf",
+      "remove_pages": []
+    },
+    {
+      "title": "Русский_язык_4.json",
+      "url": "https://xn----dtbhthpdbkkaet.xn--p1ai/catalog/russkiy-yazyk-kak-inostrannyy/05726_Rus_HamSa_Up_4kl_2ch_Uzb_light.pdf",
       "remove_pages": []
     }
   ]
