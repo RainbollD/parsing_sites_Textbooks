@@ -39,6 +39,19 @@ class GetSettings:
 
 class TransformData:
 
+    def del_begin(self):
+        """
+        Поиск момента с которого начинаются упражнения,
+        путем поиска наличия особого символа в строке "KEY_SYMBOLS_BEG"
+        :return:
+        """
+        len_data = len(self.text)
+        for idx, line in enumerate(self.text):
+            if any(key in line for key in KEY_SYMBOLS_BEG):
+                self.text = self.text[idx + 1:]
+                return
+            if idx > 0.5 * len_data: return
+
     def transform_text(self):
         """
         Преобразование сырых данных из pdf
@@ -55,6 +68,14 @@ class TransformData:
         self.text = re.sub(r'- ', '', self.text)
         self.text = re.sub(r'­ ', '', self.text)
         self.text = nltk.sent_tokenize(self.text, language='russian')
+
+    def control_transform(self):
+        """
+        Вызов трансформации текста и поиска упражнений
+        :return:
+        """
+        self.transform_text()
+        self.del_begin()
 
 
 class BasicControl(GetSettings, TransformData):
@@ -96,16 +117,6 @@ class BasicControl(GetSettings, TransformData):
         regex = re.compile(r'^(?:http|ftp)s?://', re.IGNORECASE)
         return re.match(regex, self.url) is not None
 
-    def download_file_from_url(self):
-        """
-        Скачивание файла и сохранение под именем self.name_file
-        :return:
-        """
-        response = requests.get(self.url)
-        self.is_request(response)
-        with open(os.path.join(FOLDER_PDF, self.name_file), 'wb') as f:
-            f.write(response.content)
-
     def add_begin_end(self, page):
         """
         Добавление специальных обозначений в начало или конец страницы,
@@ -116,9 +127,7 @@ class BasicControl(GetSettings, TransformData):
         if self.up_down == 'up':
             self.text += 'begin' + page
         else:
-             self.text += page + 'end'
-        # print(self.text)
-        # print('-------------------------------------------------------')
+            self.text += page + 'end'
 
     def remove_pages_from_settings(self, pdf):
         """
@@ -145,14 +154,13 @@ class BasicControl(GetSettings, TransformData):
         self.text = ''
         len_pdf_pages = len(pdf)
         for num, page in enumerate(pdf):
-            if len_pdf_pages * 0.3 <= num <= len_pdf_pages*0.7:
+            if len_pdf_pages * 0.3 <= num <= len_pdf_pages * 0.7:
                 self.add_begin_end(page.extract_text())
             else:
                 if not self.is_special_page(page.extract_text()):
                     self.add_begin_end(page.extract_text())
-                elif num > len_pdf_pages*0.7:
+                elif num > len_pdf_pages * 0.7:
                     return
-
 
     def up_down_contents(self, pdf):
         """
@@ -187,15 +195,6 @@ class BasicControl(GetSettings, TransformData):
         if not os.path.exists(FOLDER_TESTS):
             os.makedirs(FOLDER_TESTS)
 
-    def save_json(self):
-        """
-        Сохранение книги в test_files
-        :return:
-        """
-        self.create_folder_test()
-        with open(os.path.join(FOLDER_TESTS, self.title), 'w', encoding='utf-8') as f:
-            json.dump(self.text, f, ensure_ascii=False, indent=4)
-
     def assign_value_to_variable(self, book):
         """
         Присваивание: self.title - название книги,
@@ -207,6 +206,16 @@ class BasicControl(GetSettings, TransformData):
         self.title = book['title']
         self.url = book['url']
         self.remove_pages = book['remove_pages']
+
+    def download_file_from_url(self):
+        """
+        Скачивание файла и сохранение под именем self.name_file
+        :return:
+        """
+        response = requests.get(self.url)
+        self.is_request(response)
+        with open(os.path.join(FOLDER_PDF, self.name_file), 'wb') as f:
+            f.write(response.content)
 
     def download(self, book):
         """
@@ -227,6 +236,15 @@ class BasicControl(GetSettings, TransformData):
                                        prefix='Прогресс: ',
                                        fill_char='█')
 
+    def save_json(self):
+        """
+        Сохранение книги в test_files
+        :return:
+        """
+        self.create_folder_test()
+        with open(os.path.join(FOLDER_TESTS, self.title), 'w', encoding='utf-8') as f:
+            json.dump(self.text, f, ensure_ascii=False, indent=4)
+
     def main(self):
         """
         Метод, контролирующий классы.
@@ -237,12 +255,11 @@ class BasicControl(GetSettings, TransformData):
         bar.update(0)
         for i, book in enumerate(self.file_data):
             self.title = book['title']
-            if True or not os.path.exists(os.path.join(FOLDER_TESTS, self.title)):
-                self.download(book)
-                self.extract_text_with_pdfplumber()
-                self.transform_text()
-                self.save_json()
-            bar.update(i+1)
+            self.download(book)
+            self.extract_text_with_pdfplumber()
+            self.control_transform()
+            self.save_json()
+            bar.update(i + 1)
 
 
 def auto_nltk_tab():
