@@ -89,6 +89,7 @@ class TransformData:
         self.text = re.sub(r'\n', ' ', self.text)
         self.text = re.sub(r' {2}', ' ', self.text)
         self.text = re.sub(r'- ', '', self.text)
+        self.text = re.sub(r'­ ', '', self.text)
         self.text = nltk.sent_tokenize(self.text, language='russian')
 
     def control_transform(self, is_del_end, find_exersice):
@@ -161,7 +162,9 @@ class BasicControl(GetSettings, TransformData):
         if self.up_down == 'up':
             self.text += 'begin' + page
         else:
-            self.text += page + 'end'
+             self.text += page + 'end'
+        # print(self.text)
+        # print('-------------------------------------------------------')
 
     def remove_pages_from_settings(self, pdf):
         """
@@ -274,10 +277,12 @@ class BasicControl(GetSettings, TransformData):
         bar = self.setting_bar()
         bar.update(0)
         for i, book in enumerate(self.file_data):
-            self.download(book)
-            is_del_end = self.extract_text_with_pdfplumber()
-            self.control_transform(is_del_end, self.remove_pages == [])
-            self.save_json()
+            self.title = book['title']
+            if not os.path.exists(os.path.join(FOLDER_TESTS, self.title)):
+                self.download(book)
+                is_del_end = self.extract_text_with_pdfplumber()
+                self.control_transform(is_del_end, self.remove_pages == [])
+                self.save_json()
             bar.update(i+1)
 
 
