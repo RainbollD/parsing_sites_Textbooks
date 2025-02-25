@@ -67,6 +67,7 @@ class TransformData:
         self.text = re.sub(r' {2}', ' ', self.text)
         self.text = re.sub(r'- ', '', self.text)
         self.text = re.sub(r'­ ', '', self.text)
+        self.text = re.sub(r'­', '-', self.text)
         self.text = nltk.sent_tokenize(self.text, language='russian')
 
     def control_transform(self):
@@ -254,7 +255,6 @@ class BasicControl(GetSettings, TransformData):
         bar = self.setting_bar()
         bar.update(0)
         for i, book in enumerate(self.file_data):
-            self.title = book['title']
             self.download(book)
             self.extract_text_with_pdfplumber()
             self.control_transform()
@@ -263,8 +263,11 @@ class BasicControl(GetSettings, TransformData):
 
 
 def auto_nltk_tab():
+    """
+        Проверка на наличие и установка пакета nltk
+        :return:
+    """
     nltk.data.path.append(NTLK_DATA_DIRECTORY)
-
     if not os.path.exists(NTLK_DATA_DIRECTORY):
         os.makedirs(NTLK_DATA_DIRECTORY)
 
