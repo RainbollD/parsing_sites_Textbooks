@@ -46,11 +46,6 @@
       "remove_pages": []
     },
     {
-      "title": "Русский_язык_6_класс_Л.А.Мурина_Т.В.Игнатович_Ж.Ф.Жадейко_2020.json",
-      "url": "https://adukar.com/images/photo/rus_yaz_6kl_murina_rus_bel_2020.pdf",
-      "remove_pages": []
-    },
-    {
       "title": "Русский_язык_7_класс_Л.А.Мурина_Т.В.Игнатович_Ж.Ф.Жадейко_2018.json",
       "url": "https://adu.by/images/2021/10/rus_yaz_8kl_Murina_rus_bel_2018.pdf",
       "remove_pages": []
@@ -72,6 +67,11 @@
     },
     {
       "title": "Русский_язык_8_класс_С.Г.Бархударов_С.Е.Крючков_Л.Ю.МаксимовЛ.А.Чешко_Н.А.Николина_К.И.Мишина_И.В.Текучева_2022.Тронина.json",
+      "url": "barhudarov_s__russki_iazyk_8_klass_4.pdf",
+      "remove_pages": []
+    },
+    {
+      "title": "Русский_язык_7_класс_М.М.Разумовская_С.И.Львова_В_2019.Тронина.json",
       "url": "barhudarov_s__russki_iazyk_8_klass_4.pdf",
       "remove_pages": []
     }
