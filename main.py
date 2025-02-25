@@ -66,8 +66,9 @@ class TransformData:
         self.text = re.sub(r'\n', ' ', self.text)
         self.text = re.sub(r' {2}', ' ', self.text)
         self.text = re.sub(r'- ', '', self.text)
-        self.text = re.sub(r'­ ', '', self.text)
-        self.text = re.sub(r'­', '-', self.text)
+        #Для SHY
+        # self.text = re.sub(r'­ ', '', self.text)
+        # self.text = re.sub(r'­', '-', self.text)
         self.text = nltk.sent_tokenize(self.text, language='russian')
 
     def control_transform(self):
