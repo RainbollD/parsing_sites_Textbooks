@@ -52,23 +52,35 @@ class TransformData:
                 return
             if idx > 0.5 * len_data: return
 
+    def action(self, patterns_actions):
+        """
+        Проходит по patterns_actions и изменяет self.text
+        :param patterns_actions: (паттерн изменяемого кода, на что изменять)
+        :return:
+        """
+        for pattern, action in patterns_actions:
+            self.text = pattern.sub(action, self.text)
+
     def transform_text(self):
         """
         Преобразование сырых данных из pdf
         :return:
         """
-        self.text = re.sub(r'begin.*?\n', ' ', self.text)
-        self.text = re.sub(r'.*?end', '', self.text)
-        self.text = re.sub(r'\(cid:\d{1,3}\)\n', '', self.text)
-        self.text = re.sub(r'\(cid:\d{1,3}\)', '-', self.text)
-        self.text = re.sub(r'\"\n', '', self.text)
-        self.text = re.sub(r'\"', '-', self.text)
-        self.text = re.sub(r'\n', ' ', self.text)
-        self.text = re.sub(r' {2}', ' ', self.text)
-        self.text = re.sub(r'- ', '', self.text)
-        #Для SHY
-        # self.text = re.sub(r'­ ', '', self.text)
-        # self.text = re.sub(r'­', '-', self.text)
+        patterns = (
+                    (re.compile(r'begin.*?\n'), " "),
+                    (re.compile(r'.*?end'), ""),
+                    (re.compile(r'\(cid:\d+\)\n'), ""),
+                    (re.compile(r'\(cid:\d+\)'), "-"),
+                    (re.compile(r'\"\n'), ""),
+                    (re.compile(r'\"'), "-"),
+                    (re.compile(r'\n'), " "),
+                    (re.compile(r' {2}'), " "),
+                    (re.compile(r'- '), ""),
+                    (re.compile(r'­ '), ""),
+                    (re.compile(r'­'), "-"),
+                    )
+
+        self.action(patterns)
         self.text = nltk.sent_tokenize(self.text, language='russian')
 
     def control_transform(self):
@@ -221,8 +233,7 @@ class BasicControl(GetSettings, TransformData):
 
     def download(self, book):
         """
-        Присваивает данные
-        и скачивает файл, если дана ссылка
+        Cкачивает файл, если дана ссылка
         :param book:
         :return:
         """
